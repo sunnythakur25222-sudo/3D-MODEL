@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abandoned but not Forgotten - NASA Space Apps</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      background-color: #05070d;
+      color: #f3f4f6;
+    }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    canvas { outline: none; }
+
+    /* Custom Glassmorphism Panels */
+    .glass-hud {
+      background: rgba(10, 15, 29, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.65);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-button {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-button:hover {
+      background: rgba(59, 130, 246, 0.25);
+      border-color: rgba(96, 165, 250, 0.5);
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+    }
+    .glass-button.active {
+      background: rgba(59, 130, 246, 0.4);
+      border-color: #60a5fa;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Animated Status Beacons */
+    .status-pulse {
+      animation: pulse-glow 2s infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.95); }
+    }
+
+    .warning-flash {
+      animation: flash-red 0.8s infinite alternate;
+    }
+    @keyframes flash-red {
+      from { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.4); }
+      to { background-color: rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+    }
+
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.4); border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.8); }
+  </style>
+</head>
+<body class="h-screen w-screen relative select-none bg-slate-950 text-slate-100">
+
+  <!-- 3D Canvas Viewport -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></div>
+
+  <!-- Top Floating Header Bar -->
+  <header class="absolute top-0 left-0 w-full p-4 md:p-6 flex flex-wrap justify-between items-center z-20 pointer-events-none gap-4">
+    
+    <!-- Title Branding -->
+    <div class="glass-hud px-4 py-2.5 rounded-2xl flex items-center gap-3 pointer-events-auto border-l-4 border-l-cyan-500 shadow-2xl">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/30">
+        <i data-lucide="shield" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">NASA SPACE APPS</span>
+          <span class="text-[9px] font-bold font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">NEPALI SHARPS</span>
+        </div>
+        <h1 class="text-sm font-extrabold font-orbitron tracking-wider text-white">AUTONOMOUS SHIELD ROVER</h1>
+      </div>
+    </div>
+
+    <!-- Minimal Floating Toolbar -->
+    <div class="glass-hud px-3 py-2 rounded-2xl flex items-center gap-2 pointer-events-auto shadow-2xl backdrop-blur-md">
+      <!-- Deploy Umbrella Canopy Button -->
+      <button id="btn-deploy-shield" class="glass-button px-3.5 py-1.5 rounded-xl flex items-center gap-2 text-xs font-mono font-bold text-cyan-300 hover:text-cyan-200">
+        <i data-lucide="umbrella" class="w-4 h-4 text-cyan-400"></i>
+        <span id="deploy-button-text">Deploy Umbrella</span>
+      </button>
+
+      <div class="h-4 w-px bg-slate-700/60"></div>
+
+      <!-- Dust Storm Trigger -->
+      <button id="btn-storm-toggle" class="glass-button px-3.5 py-1.5 rounded-xl flex items-center gap-2 text-xs font-mono font-bold text-amber-300 hover:text-amber-200">
+        <i data-lucide="wind" class="w-4 h-4 text-amber-400"></i>
+        <span id="storm-label">Simulate Storm</span>
+      </button>
+
+      <div class="h-4 w-px bg-slate-700/60"></div>
+
+      <!-- Environment Switcher -->
+      <button id="btn-env-toggle" class="glass-button px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-mono text-slate-300">
+        <i data-lucide="globe" class="w-4 h-4 text-emerald-400"></i>
+        <span id="env-label">Mars Surface</span>
+      </button>
+
+      <div class="h-4 w-px bg-slate-700/60"></div>
+
+      <!-- Exploded View Toggle -->
+      <button id="btn-explode-toggle" class="glass-button px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-mono text-indigo-300">
+        <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i>
+        <span id="explode-label">Explode</span>
+      </button>
+
+      <div class="h-4 w-px bg-slate-700/60"></div>
+
+      <!-- Python Code Modal Toggle Button -->
+      <button id="btn-code-modal" class="glass-button p-2 rounded-xl text-emerald-300 hover:text-emerald-200" title="Inspect Python Code">
+        <i data-lucide="code" class="w-4 h-4 text-emerald-400"></i>
+      </button>
+
+      <!-- Auto Rotate Toggle -->
+      <button id="btn-autorotate" class="glass-button p-2 rounded-xl text-slate-300 hover:text-white" title="Toggle Auto Rotation">
+        <i data-lucide="rotate-cw" class="w-4 h-4 text-blue-400"></i>
+      </button>
+    </div>
+
+  </header>
+
+  <!-- Floating Telemetry Capsule (Bottom Left) -->
+  <div class="absolute bottom-6 left-6 z-20 pointer-events-auto hidden sm:flex items-center gap-3">
+    <div id="telemetry-panel" class="glass-hud px-4 py-2.5 rounded-2xl flex items-center gap-4 text-xs font-mono shadow-2xl transition-all">
+      <div class="flex items-center gap-2">
+        <span id="system-status-badge" class="w-2.5 h-2.5 rounded-full bg-emerald-400 status-pulse"></span>
+        <span class="text-slate-300 font-bold text-[11px]" id="status-text">SYSTEM READY</span>
+      </div>
+      <div class="h-3.5 w-px bg-slate-700"></div>
+      <div class="text-[11px] text-slate-400">
+        DUST: <span id="telemetry-dust" class="text-slate-200 font-bold">0.02 mg/m³</span>
+      </div>
+      <div class="h-3.5 w-px bg-slate-700"></div>
+      <div class="text-[11px] text-slate-400">
+        LUX: <span id="telemetry-light" class="text-slate-200 font-bold">850 Lux</span>
+      </div>
+      <div class="h-3.5 w-px bg-slate-700"></div>
+      <div class="text-[11px] text-slate-400">
+        SHIELD: <span id="telemetry-actuator" class="text-slate-200 font-bold">STOWED (0%)</span>
+      </div>
+    </div>
+
+    <!-- Python Quick Inspector Button -->
+    <button id="btn-open-code-from-side" class="glass-hud p-2.5 rounded-2xl text-emerald-400 hover:text-emerald-300 transition shadow-2xl flex items-center justify-center">
+      <i data-lucide="file-code" class="w-4 h-4"></i>
+    </button>
+  </div>
+
+  <!-- Help Interaction Tooltip (Bottom Right) -->
+  <div class="absolute bottom-6 right-6 hidden md:flex items-center gap-2 glass-hud px-3.5 py-2 rounded-2xl text-[11px] text-slate-400 z-10 pointer-events-auto shadow-2xl">
+    <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-cyan-400"></i>
+    <span>Left-click: Rotate | Right-click: Pan | Scroll: Zoom</span>
+  </div>
+
+  <!-- Python Code & Logic Circuit Modal Overlay -->
+  <div id="code-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-8 hidden transition-all duration-300">
+    <div class="glass-hud w-full max-w-5xl h-[85vh] rounded-3xl flex flex-col overflow-hidden border border-slate-700/70 shadow-2xl">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-700/60 flex items-center justify-between bg-slate-900/60">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 font-bold">
+            <i data-lucide="code" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">PYTHON 3.10</span>
+              <span class="text-[10px] font-mono text-slate-400">sunnythakur25222-sudo / Mars-rover-umbrella-Shield</span>
+            </div>
+            <h3 class="text-sm font-bold font-orbitron text-white">mars_rover_shield.py — Autonomous Protection Pipeline</h3>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a href="https://github.com/sunnythakur25222-sudo/Mars-rover-umbrella-Shield/blob/main/mars_rover_shield.py" target="_blank" class="glass-button px-3 py-1.5 rounded-xl text-xs font-mono text-slate-300 flex items-center gap-1.5 hover:text-white">
+            <i data-lucide="github" class="w-3.5 h-3.5"></i> View Repo
+          </a>
+          <button id="btn-close-code-modal" class="glass-button p-2 rounded-xl text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Main Grid (Code Code Left + Live Simulator Right) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+        
+        <!-- Left: Code Code Viewer -->
+        <div class="lg:col-span-7 border-r border-slate-700/60 flex flex-col bg-slate-950/90 font-mono text-xs overflow-hidden">
+          <div class="px-4 py-2 bg-slate-900/80 border-b border-slate-800 text-slate-400 text-[11px] flex justify-between items-center">
+            <span>SOURCE CODE (`mars_rover_shield.py`)</span>
+            <span class="text-cyan-400">STATUS: READY TO EXECUTE</span>
+          </div>
+
+          <pre class="p-4 overflow-y-auto custom-scrollbar flex-1 text-slate-300 leading-relaxed"><code id="python-code-block"># ==============================================================================
+# PROJECT: Abandoned but not Forgotten (NASA Space Apps Challenge)
+# TEAM: Nepali Sharps
+# REPO: sunnythakur25222-sudo/Mars-rover-umbrella-Shield
+# FILE: mars_rover_shield.py
+# DESCRIPTION: Proactive Autonomous Dust Shield & Rover Defence System
+# ==============================================================================
+
+import time
+import math
+import random
+
+# Hardware Pin Configurations & Addresses
+ESP32_CAM_PIN     = 34   # Horizon hazard detection optical camera feed
+SHARP_DUST_PIN    = 35   # Sharp GP2Y1014AU0F dust density sensor
+BH1750_I2C_ADDR   = 0x23 # BH1750 ambient light lux level sensor
+
+# L298N Dual H-Bridge Motor Driver Control Pins
+L298N_ENA = 25  # PWM Speed Control Enable
+L298N_IN1 = 26  # Piston Actuator Extend Signal
+L298N_IN2 = 27  # Piston Actuator Retract Signal
+
+# Operational System Threshold Constants
+DUST_THRESHOLD_MG_M3 = 1.20   # Hazard trigger (> 1.2 mg/m³)
+LIGHT_MIN_THRESHOLD_LUX = 250  # Solar dimness trigger (< 250 Lux)
+
+class MarsRoverShieldController:
+    def __init__(self):
+        self.shield_deployed = False
+        self.actuator_position = 0.0  # 0.0 = Retracted, 1.0 = Extended (100%)
+        print("[INIT] Mars Rover Autonomous Shield Defence Initialized.")
+
+    def read_esp32_cam_feed(self):
+        """Simulates visual optical scanning from front mast camera."""
+        return {"fps": 60, "optical_hazard": random.choice([False, False, True])}
+
+    def read_sharp_gp2y1014(self, storm_simulated=False):
+        """Reads dust particle density in mg/m3 from Sharp sensor."""
+        if storm_simulated:
+            return round(random.uniform(2.1, 4.5), 2)
+        return round(random.uniform(0.01, 0.25), 2)
+
+    def read_bh1750_light_sensor(self, storm_simulated=False):
+        """Reads ambient illumination lux levels via I2C."""
+        if storm_simulated:
+            return random.randint(80, 220)
+        return random.randint(750, 980)
+
+    def set_l298n_actuators(self, direction, pwm_speed=255):
+        """Drives linear actuator motors via L298N dual H-bridge output."""
+        if direction == "EXTEND":
+            # HIGH on IN1, LOW on IN2 -> Piston Deploy Canopy Dome
+            print(f"[ACTUATOR] Driving L298N IN1=HIGH, IN2=LOW | PWM={pwm_speed}")
+            self.shield_deployed = True
+            self.actuator_position = 1.0
+        elif direction == "RETRACT":
+            # LOW on IN1, HIGH on IN2 -> Piston Stow Canopy
+            print(f"[ACTUATOR] Driving L298N IN1=LOW, IN2=HIGH | PWM={pwm_speed}")
+            self.shield_deployed = False
+            self.actuator_position = 0.0
+
+    def evaluate_defence_logic(self, storm_active=False):
+        """Core decision loop executing sensor 'AND' trigger logic."""
+        dust_val = self.read_sharp_gp2y1014(storm_active)
+        light_val = self.read_bh1750_light_sensor(storm_active)
+        cam_feed = self.read_esp32_cam_feed()
+
+        print(f"[TELEMETRY] Dust: {dust_val} mg/m³ | Light: {light_val} Lux")
+
+        # Logic: Trigger shield if dust exceeds threshold OR solar drop detected
+        if dust_val > DUST_THRESHOLD_MG_M3 or light_val < LIGHT_MIN_THRESHOLD_LUX:
+            if not self.shield_deployed:
+                print("[ALERT] Dust storm hazard confirmed! Deploying full shield canopy...")
+                self.set_l298n_actuators("EXTEND")
+        else:
+            if self.shield_deployed:
+                print("[INFO] Atmosphere clear. Retracting umbrella shield...")
+                self.set_l298n_actuators("RETRACT")
+
+        return {
+            "dust": dust_val,
+            "light": light_val,
+            "shield": "DEPLOYED (100%)" if self.shield_deployed else "STOWED (0%)"
+        }
+
+# Instantiate and run execution cycle
+rover_system = MarsRoverShieldController()
+</code></pre>
+        </div>
+
+        <!-- Right: Live Interactive Logic Simulator Panel -->
+        <div class="lg:col-span-5 p-6 flex flex-col justify-between bg-slate-900/50">
+          <div>
+            <h4 class="text-xs font-bold font-orbitron text-slate-200 tracking-wider mb-2 flex items-center gap-2">
+              <i data-lucide="play" class="w-4 h-4 text-emerald-400"></i> LIVE PYTHON LOGIC EXECUTION LOOP
+            </h4>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Test how the code's digital logic handles storm detection by simulating sensor inputs and controlling the L298N dual H-bridge motor driver.
+            </p>
+
+            <!-- Test Trigger Buttons -->
+            <div class="flex flex-col gap-3 mb-6">
+              <button id="btn-run-sim-normal" class="glass-button py-2.5 px-4 rounded-xl text-xs font-mono text-emerald-300 hover:bg-emerald-500/20 flex items-center justify-between border-emerald-500/30">
+                <span>Run Loop: Clear Atmosphere</span>
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+              </button>
+
+              <button id="btn-run-sim-storm" class="glass-button py-2.5 px-4 rounded-xl text-xs font-mono text-amber-300 hover:bg-amber-500/20 flex items-center justify-between border-amber-500/30">
+                <span>Run Loop: Trigger Dust Storm</span>
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+              </button>
+            </div>
+
+            <!-- Terminal Output Log -->
+            <div class="p-3 rounded-2xl bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 h-44 overflow-y-auto custom-scrollbar flex flex-col gap-1.5" id="sim-terminal-log">
+              <div class="text-slate-500">// Terminal log output stream initialized...</div>
+              <div class="text-emerald-400">[INIT] MarsRoverShieldController ready.</div>
+            </div>
+          </div>
+
+          <!-- Bottom Sync Action -->
+          <div class="pt-4 border-t border-slate-800">
+            <button id="btn-sync-python-to-3d" class="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-orbitron font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i> Sync Logic State to 3D Viewport
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    /* =========================================================================
+       THREE.JS 3D SCENE & MODEL SETUP
+       ========================================================================= */
+    let scene, camera, renderer, controls;
+    let roverGroup, umbrellaGroup, umbrellaCanopyMesh, pistonArms = [];
+    let solarPanels = [], wheels = [], cameraMast;
+    let terrainMesh, particleSystem, particleGeo;
+    let dirLight, ambientLight, spotLight;
+
+    // App State Flags
+    let isMarsEnv = true;
+    let isStormActive = false;
+    let isShieldDeployed = false;
+    let isExplodedView = false;
+    let isAutoRotate = false;
+
+    // Transition Interp Vectors
+    let targetCamPos = new THREE.Vector3(5, 3.5, 6);
+    let targetLookAt = new THREE.Vector3(0, 0.8, 0);
+    let umbrellaScaleProgress = 0; // 0 = stowed, 1 = deployed
+    let explodedProgress = 0;       // 0 = normal, 1 = exploded
+
+    function initThree() {
+      const container = document.getElementById('canvas-container');
+
+      // Scene Setup
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x05070d);
+      scene.fog = new THREE.FogExp2(0x05070d, 0.035);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      camera.position.set(5, 3.5, 6);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      container.appendChild(renderer.domElement);
+
+      // Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxDistance = 18;
+      controls.minDistance = 2;
+      controls.maxPolarAngle = Math.PI / 2 + 0.05; // Stay above ground
+      controls.target.set(0, 0.8, 0);
+
+      // Lighting Setup
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      scene.add(ambientLight);
+
+      dirLight = new THREE.DirectionalLight(0xffdfb3, 1.8);
+      dirLight.position.set(10, 15, 8);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      scene.add(dirLight);
+
+      spotLight = new THREE.SpotLight(0x38bdf8, 2, 15, Math.PI / 6, 0.5);
+      spotLight.position.set(0, 6, 0);
+      spotLight.target.position.set(0, 0, 0);
+      scene.add(spotLight);
+      scene.add(spotLight.target);
+
+      // Create World Models
+      createTerrain();
+      createRover3DModel();
+      createAtmosphericParticles();
+
+      // Window Resize Listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Start Loop
+      animate();
+    }
+
+    /* =========================================================================
+       TERRAIN GENERATION
+       ========================================================================= */
+    function createTerrain() {
+      const geo = new THREE.PlaneGeometry(50, 50, 64, 64);
+      geo.rotateX(-Math.PI / 2);
+
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const dist = Math.sqrt(x * x + z * z);
+        if (dist > 3) {
+          pos.setY(i, Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.3 + (Math.random() - 0.5) * 0.05);
+        } else {
+          pos.setY(i, (Math.random() - 0.5) * 0.02);
+        }
+      }
+      geo.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xbc472b, // Mars Red default
+        roughness: 0.9,
+        metalness: 0.1,
+        flatShading: true
+      });
+
+      terrainMesh = new THREE.Mesh(geo, mat);
+      terrainMesh.receiveShadow = true;
+      scene.add(terrainMesh);
+    }
+
+    /* =========================================================================
+       COMPLEX 3D ROVER MODEL GENERATION
+       ========================================================================= */
+    function createRover3DModel() {
+      roverGroup = new THREE.Group();
+
+      const titaniumMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+      const goldFoilMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.2, emissive: 0xd97706, emissiveIntensity: 0.2 });
+      const darkChassisMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.7, roughness: 0.4 });
+      const solarCellMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.9, roughness: 0.1, emissive: 0x312e81, emissiveIntensity: 0.3 });
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.5 });
+
+      // Chassis Body
+      const chassisGeo = new THREE.BoxGeometry(1.8, 0.7, 2.4);
+      const chassis = new THREE.Mesh(chassisGeo, goldFoilMat);
+      chassis.position.y = 0.9;
+      chassis.castShadow = true;
+      chassis.receiveShadow = true;
+      roverGroup.add(chassis);
+
+      const frameGeo = new THREE.BoxGeometry(1.9, 0.75, 2.5);
+      const frameWireMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.2 });
+      const frameWire = new THREE.Mesh(frameGeo, frameWireMat);
+      chassis.add(frameWire);
+
+      const brainGeo = new THREE.BoxGeometry(0.5, 0.3, 0.5);
+      const brainMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
+      const brain = new THREE.Mesh(brainGeo, brainMat);
+      brain.position.set(0, 0.45, 0);
+      chassis.add(brain);
+
+      // Solar Panels
+      const solarWingGeo = new THREE.BoxGeometry(1.4, 0.04, 1.2);
+      
+      const leftSolar = new THREE.Mesh(solarWingGeo, solarCellMat);
+      leftSolar.position.set(-1.4, 0.35, 0);
+      chassis.add(leftSolar);
+
+      const rightSolar = new THREE.Mesh(solarWingGeo, solarCellMat);
+      rightSolar.position.set(1.4, 0.35, 0);
+      chassis.add(rightSolar);
+
+      solarPanels.push(leftSolar, rightSolar);
+
+      // ESP32-CAM Mast
+      cameraMast = new THREE.Group();
+      const mastPoleGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 16);
+      const mastPole = new THREE.Mesh(mastPoleGeo, titaniumMat);
+      mastPole.position.set(0, 0.6, 0.9);
+      cameraMast.add(mastPole);
+
+      const camHeadGeo = new THREE.BoxGeometry(0.3, 0.25, 0.2);
+      const camHeadMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9 });
+      const camHead = new THREE.Mesh(camHeadGeo, camHeadMat);
+      camHead.position.set(0, 1.2, 0.9);
+
+      const lensGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.1, 16);
+      lensGeo.rotateX(Math.PI / 2);
+      const lensMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.8 });
+      const lens = new THREE.Mesh(lensGeo, lensMat);
+      lens.position.set(0, 0, 0.12);
+      camHead.add(lens);
+
+      cameraMast.add(camHead);
+      chassis.add(cameraMast);
+
+      // 6 Wheels
+      const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.28, 24);
+      wheelGeo.rotateZ(Math.PI / 2);
+
+      const wheelPositions = [
+        { x: -1.2, y: 0.35, z: 1.1 },
+        { x: 1.2, y: 0.35, z: 1.1 },
+        { x: -1.3, y: 0.35, z: 0.0 },
+        { x: 1.3, y: 0.35, z: 0.0 },
+        { x: -1.2, y: 0.35, z: -1.1 },
+        { x: 1.2, y: 0.35, z: -1.1 }
+      ];
+
+      wheelPositions.forEach((pos) => {
+        const wMesh = new THREE.Mesh(wheelGeo, wheelMat);
+        wMesh.position.set(pos.x, pos.y, pos.z);
+        wMesh.castShadow = true;
+
+        const treadGeo = new THREE.CylinderGeometry(0.33, 0.33, 0.29, 8);
+        treadGeo.rotateZ(Math.PI / 2);
+        const treadMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, wireframe: true });
+        const tread = new THREE.Mesh(treadGeo, treadMat);
+        wMesh.add(tread);
+
+        const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.6);
+        const leg = new THREE.Mesh(legGeo, titaniumMat);
+        leg.position.set(pos.x > 0 ? -0.15 : 0.15, 0.2, 0);
+        leg.rotation.z = pos.x > 0 ? -0.4 : 0.4;
+        wMesh.add(leg);
+
+        roverGroup.add(wMesh);
+        wheels.push(wMesh);
+      });
+
+      // Deployable Umbrella Canopy Shield Assembly
+      umbrellaGroup = new THREE.Group();
+      umbrellaGroup.position.set(0, 0.4, 0);
+
+      const umbrellaMastGeo = new THREE.CylinderGeometry(0.08, 0.1, 2.2, 16);
+      const umbrellaMast = new THREE.Mesh(umbrellaMastGeo, titaniumMat);
+      umbrellaMast.position.y = 1.1;
+      umbrellaGroup.add(umbrellaMast);
+
+      // Umbrella Dome Mesh
+      const domeGeo = new THREE.SphereGeometry(3.6, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.65);
+      const domeMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        metalness: 0.85,
+        roughness: 0.2,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.92,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.2
+      });
+      umbrellaCanopyMesh = new THREE.Mesh(domeGeo, domeMat);
+      umbrellaCanopyMesh.position.y = 1.6;
+      umbrellaCanopyMesh.scale.set(0.01, 0.01, 0.01);
+      umbrellaGroup.add(umbrellaCanopyMesh);
+
+      // Carbon Ribs
+      const ribCount = 12;
+      for (let i = 0; i < ribCount; i++) {
+        const angle = (i / ribCount) * Math.PI * 2;
+        const ribGeo = new THREE.CylinderGeometry(0.025, 0.025, 3.7);
+        const rib = new THREE.Mesh(ribGeo, darkChassisMat);
+        rib.rotation.z = Math.PI / 2.8;
+        rib.rotation.y = angle;
+        rib.position.y = 0.2;
+        umbrellaCanopyMesh.add(rib);
+      }
+
+      // Linear Actuators
+      for (let i = 0; i < 2; i++) {
+        const pistonGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.2);
+        const piston = new THREE.Mesh(pistonGeo, titaniumMat);
+        piston.position.set(i === 0 ? -0.5 : 0.5, 0.6, 0);
+        piston.rotation.z = i === 0 ? -0.35 : 0.35;
+        umbrellaGroup.add(piston);
+        pistonArms.push(piston);
+      }
+
+      roverGroup.add(umbrellaGroup);
+      scene.add(roverGroup);
+    }
+
+    /* =========================================================================
+       ATMOSPHERIC DUST STORM PARTICLES
+       ========================================================================= */
+    function createAtmosphericParticles() {
+      const count = 1200;
+      particleGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 30;
+        positions[i + 1] = Math.random() * 8;
+        positions[i + 2] = (Math.random() - 0.5) * 30;
+      }
+
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const particleMat = new THREE.PointsMaterial({
+        color: 0xd97706,
+        size: 0.08,
+        transparent: true,
+        opacity: 0.15
+      });
+
+      particleSystem = new THREE.Points(particleGeo, particleMat);
+      scene.add(particleSystem);
+    }
+
+    /* =========================================================================
+       ANIMATION LOOP
+       ========================================================================= */
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Camera Lerp Interpolation
+      camera.position.lerp(targetCamPos, 0.05);
+      controls.target.lerp(targetLookAt, 0.05);
+
+      if (isAutoRotate) {
+        roverGroup.rotation.y += delta * 0.3;
+      }
+
+      wheels.forEach(w => {
+        w.rotation.x += delta * 0.1;
+      });
+
+      if (cameraMast) {
+        cameraMast.rotation.y = Math.sin(time * 0.8) * 0.4;
+      }
+
+      if (particleSystem) {
+        const pos = particleGeo.attributes.position;
+        const speed = isStormActive ? 0.35 : 0.05;
+
+        for (let i = 0; i < pos.count; i++) {
+          let x = pos.getX(i);
+          let y = pos.getY(i);
+          let z = pos.getZ(i);
+
+          x += speed;
+          z += speed * 0.5;
+
+          if (x > 15) x = -15;
+          if (z > 15) z = -15;
+
+          pos.setXYZ(i, x, y, z);
+        }
+        particleGeo.attributes.position.needsUpdate = true;
+      }
+
+      // Dynamic Shield Interpolation
+      const targetScale = isShieldDeployed ? 1 : 0.01;
+      umbrellaScaleProgress = THREE.MathUtils.lerp(umbrellaScaleProgress, targetScale, 0.06);
+      if (umbrellaCanopyMesh) {
+        umbrellaCanopyMesh.scale.set(umbrellaScaleProgress, umbrellaScaleProgress, umbrellaScaleProgress);
+        umbrellaCanopyMesh.rotation.y = time * 0.1;
+      }
+
+      pistonArms.forEach(piston => {
+        piston.scale.y = 1 + umbrellaScaleProgress * 0.5;
+      });
+
+      // Exploded View Interpolation
+      const targetExplode = isExplodedView ? 1 : 0;
+      explodedProgress = THREE.MathUtils.lerp(explodedProgress, targetExplode, 0.05);
+
+      if (solarPanels.length === 2) {
+        solarPanels[0].position.x = -1.4 - explodedProgress * 0.8;
+        solarPanels[1].position.x = 1.4 + explodedProgress * 0.8;
+      }
+      if (umbrellaGroup) {
+        umbrellaGroup.position.y = 1.25 + explodedProgress * 1.2;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    /* =========================================================================
+       CONTROL ACTIONS
+       ========================================================================= */
+
+    function toggleUmbrellaShield() {
+      isShieldDeployed = !isShieldDeployed;
+      const btnText = document.getElementById('deploy-button-text');
+      const telemetryAct = document.getElementById('telemetry-actuator');
+
+      if (isShieldDeployed) {
+        btnText.innerText = "Stow Umbrella";
+        telemetryAct.innerText = "EXTENDED (100%)";
+        telemetryAct.className = "text-cyan-400 font-bold";
+      } else {
+        btnText.innerText = "Deploy Umbrella";
+        telemetryAct.innerText = "STOWED (0%)";
+        telemetryAct.className = "text-slate-200 font-bold";
+      }
+    }
+
+    function toggleDustStorm() {
+      isStormActive = !isStormActive;
+      const label = document.getElementById('storm-label');
+      const telemetryDust = document.getElementById('telemetry-dust');
+      const telemetryLight = document.getElementById('telemetry-light');
+      const statusText = document.getElementById('status-text');
+      const statusBadge = document.getElementById('system-status-badge');
+
+      if (isStormActive) {
+        label.innerText = "Clear Storm";
+        particleSystem.material.opacity = 0.7;
+        scene.fog.density = 0.08;
+
+        telemetryDust.innerText = "2.85 mg/m³";
+        telemetryDust.className = "text-red-400 font-bold";
+        telemetryLight.innerText = "120 Lux";
+        telemetryLight.className = "text-amber-400 font-bold";
+
+        statusText.innerText = "STORM HAZARD DETECTED";
+        statusText.className = "text-red-400 font-bold text-[11px]";
+        statusBadge.className = "w-2.5 h-2.5 rounded-full bg-red-500 status-pulse";
+
+        if (!isShieldDeployed) toggleUmbrellaShield();
+
+      } else {
+        label.innerText = "Simulate Storm";
+        particleSystem.material.opacity = 0.15;
+        scene.fog.density = 0.035;
+
+        telemetryDust.innerText = "0.02 mg/m³";
+        telemetryDust.className = "text-slate-200 font-bold";
+        telemetryLight.innerText = "850 Lux";
+        telemetryLight.className = "text-slate-200 font-bold";
+
+        statusText.innerText = "SYSTEM READY";
+        statusText.className = "text-slate-300 font-bold text-[11px]";
+        statusBadge.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 status-pulse";
+      }
+    }
+
+    function toggleEnvironment() {
+      isMarsEnv = !isMarsEnv;
+      const label = document.getElementById('env-label');
+
+      if (isMarsEnv) {
+        label.innerText = "Mars Surface";
+        terrainMesh.material.color.setHex(0xbc472b);
+        scene.background.setHex(0x05070d);
+        scene.fog.color.setHex(0x05070d);
+        dirLight.color.setHex(0xffdfb3);
+        particleSystem.material.color.setHex(0xd97706);
+      } else {
+        label.innerText = "Lunar Surface";
+        terrainMesh.material.color.setHex(0x64748b);
+        scene.background.setHex(0x020617);
+        scene.fog.color.setHex(0x020617);
+        dirLight.color.setHex(0xe2e8f0);
+        particleSystem.material.color.setHex(0x94a3b8);
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('btn-deploy-shield').addEventListener('click', toggleUmbrellaShield);
+      document.getElementById('btn-storm-toggle').addEventListener('click', toggleDustStorm);
+      document.getElementById('btn-env-toggle').addEventListener('click', toggleEnvironment);
+
+      const codeModal = document.getElementById('code-modal');
+      const openModal = () => codeModal.classList.remove('hidden');
+      const closeModal = () => codeModal.classList.add('hidden');
+
+      document.getElementById('btn-code-modal').addEventListener('click', openModal);
+      document.getElementById('btn-open-code-from-side').addEventListener('click', openModal);
+      document.getElementById('btn-close-code-modal').addEventListener('click', closeModal);
+
+      const termLog = document.getElementById('sim-terminal-log');
+      
+      document.getElementById('btn-run-sim-normal').addEventListener('click', () => {
+        termLog.innerHTML += `
+          <div class="text-slate-400">[TELEMETRY] Dust: 0.04 mg/m³ | Light: 840 Lux</div>
+          <div class="text-emerald-400">[INFO] Conditions clear. Shield stowed.</div>
+        `;
+        termLog.scrollTop = termLog.scrollHeight;
+        if (isStormActive) toggleDustStorm();
+      });
+
+      document.getElementById('btn-run-sim-storm').addEventListener('click', () => {
+        termLog.innerHTML += `
+          <div class="text-amber-400">[TELEMETRY] Dust: 3.12 mg/m³ | Light: 140 Lux</div>
+          <div class="text-red-400">[ALERT] Dust storm detected! Calling L298N EXTEND...</div>
+        `;
+        termLog.scrollTop = termLog.scrollHeight;
+        if (!isStormActive) toggleDustStorm();
+      });
+
+      document.getElementById('btn-sync-python-to-3d').addEventListener('click', closeModal);
+
+      document.getElementById('btn-explode-toggle').addEventListener('click', () => {
+        isExplodedView = !isExplodedView;
+        document.getElementById('explode-label').innerText = isExplodedView ? "Assemble" : "Explode";
+      });
+
+      document.getElementById('btn-autorotate').addEventListener('click', () => {
+        isAutoRotate = !isAutoRotate;
+        document.getElementById('btn-autorotate').classList.toggle('active', isAutoRotate);
+      });
+    }
+
+    window.onload = function() {
+      initThree();
+      setupEventListeners();
+    };
+  </script>
+</body>
+</html>
